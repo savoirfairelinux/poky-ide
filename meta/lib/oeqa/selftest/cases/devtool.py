@@ -11,6 +11,7 @@ import tempfile
 import glob
 import fnmatch
 import unittest
+import json
 
 from oeqa.selftest.case import OESelftestTestCase
 from oeqa.utils.commands import runCmd, bitbake, get_bb_var, create_temp_layer
@@ -2196,3 +2197,181 @@ class DevtoolUpgradeTests(DevtoolBase):
 
         #Step 4.5
         runCmd("grep %s %s" % (modconfopt, codeconfigfile))
+
+
+
+class DevtoolIdeTests(DevtoolBase):
+    def __devtool_ide_recipe(self, recipe_name, build_file, testimage):
+        self._check_runqemu_prerequisites()
+        tempdir = tempfile.mkdtemp(prefix='devtoolqa')
+        self.track_for_cleanup(tempdir)
+        self.track_for_cleanup(self.workspacedir)
+        self.add_command_to_tearDown('bitbake -c clean %s' % recipe_name)
+        self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
+
+        conf_lines = [
+            'IMAGE_CLASSES += "image-combined-dbg"',
+            'IMAGE_GEN_DEBUGFS = "1"',
+            'IMAGE_INSTALL += "gdbserver %s-ptest"' % recipe_name
+        ]
+        self.write_config("\n".join(conf_lines))
+
+        result = runCmd('devtool modify %s -x %s' % (recipe_name, tempdir))
+        self.assertExists(os.path.join(tempdir, build_file),
+                          'Extracted source could not be found')
+        self.assertExists(os.path.join(self.workspacedir, 'conf',
+                          'layer.conf'), 'Workspace directory not created')
+        matches = glob.glob(os.path.join(self.workspacedir,
+                            'appends', recipe_name + '.bbappend'))
+        self.assertTrue(matches, 'bbappend not created %s' % result.output)
+
+        # Test devtool status
+        result = runCmd('devtool status')
+        self.assertIn(recipe_name, result.output)
+        self.assertIn(tempdir, result.output)
+        self._check_src_repo(tempdir)
+
+        # Usually devtool ide would initiate the build of the SDK.
+        # But there is a circular dependency with starting Qemu and passing the IP of runqemu to devtool ide.
+        bitbake("%s qemu-native qemu-helper-native" % testimage)
+        deploy_dir_image = get_bb_var('DEPLOY_DIR_IMAGE')
+        self.add_command_to_tearDown('bitbake -c clean %s' % testimage)
+        self.add_command_to_tearDown('rm -f %s/%s*' % (deploy_dir_image, testimage))
+
+        return tempdir
+
+    def __devtool_ide_qemu(self, tempdir, qemu, recipe_name, bitbake_sdk_cmd, example_exe):
+        # Verify do_install works
+        with open(os.path.join(tempdir, '.vscode', 'tasks.json')) as tasks_j:
+            tasks_d = json.load(tasks_j)
+        tasks = tasks_d["tasks"]
+        task_install = next((task for task in tasks if task["label"] == "install && deploy-target %s"  % recipe_name), None)
+        self.assertIsNot(task_install, None)
+        install_deploy_cmd = task_install["command"]
+        # execute only the bb_run_do_install script since the deploy would require e.g. Qemu running.
+        install_cmd = install_deploy_cmd.replace("install_and_deploy", "bb_run_do_install")
+        runCmd(install_cmd, cwd=tempdir)
+
+        # Verify if re-building the SDK still works and the deploy and install script gets generated
+        runCmd(bitbake_sdk_cmd)
+        self.assertExists(install_deploy_cmd, 'install_and_deploy script not found')
+
+        MAGIC_STRING_ORIG = "Magic: 123456789"
+        MAGIC_STRING_NEW = "Magic: 987654321"
+        ptest_cmd = "ptest-runner " + recipe_name
+
+        # Verify the unmodified example prints the magic string
+        status, output = qemu.run(example_exe)
+        self.assertEqual(status, 0, msg="%s failed: %s" % (example_exe, output))
+        self.assertIn(MAGIC_STRING_ORIG, output)
+
+        # Verify the unmodified ptests work
+        status, output = qemu.run(ptest_cmd)
+        self.assertEqual(status, 0, msg="%s failed: %s" % (ptest_cmd, output))
+        self.assertIn("PASS: cpp-example-lib", output)
+
+        # Replace the Magic String in the code, compile and deploy to Qemu
+        cpp_example_lib_hpp = os.path.join(tempdir, 'cpp-example-lib.hpp')
+        with open(cpp_example_lib_hpp, 'r') as file:
+            cpp_code = file.read()
+            cpp_code = cpp_code.replace(MAGIC_STRING_ORIG, MAGIC_STRING_NEW)
+        with open(cpp_example_lib_hpp, 'w') as file:
+            file.write(cpp_code)
+        runCmd(install_deploy_cmd, cwd=tempdir)
+
+        # Verify the modified example prints the modified magic string
+        status, output = qemu.run(example_exe)
+        self.assertEqual(status, 0, msg="%s failed: %s" % (example_exe, output))
+        self.assertNotIn(MAGIC_STRING_ORIG, output)
+        self.assertIn(MAGIC_STRING_NEW, output)
+
+        # Verify the modified example ptests work
+        status, output = qemu.run(ptest_cmd)
+        self.assertEqual(status, 0, msg="%s failed: %s" % (ptest_cmd, output))
+        self.assertIn("PASS: cpp-example-lib", output)
+
+    @OETestTag("runqemu")
+    def test_devtool_ide_recipe_cmake(self):
+        recipe_name = "cmake-example"
+        example_exe = "cmake-example"
+        build_file = "CMakeLists.txt"
+        testimage = "oe-selftest-image"
+
+        tempdir = self.__devtool_ide_recipe(recipe_name, build_file, testimage)
+
+        # Verify deployment to Qemu works
+        with runqemu(testimage) as qemu:
+            bitbake_sdk_cmd = 'devtool ide %s %s -t root@%s -c --ide=code' % (recipe_name, testimage, qemu.ip)
+            runCmd(bitbake_sdk_cmd)
+
+            with open(os.path.join(tempdir, 'CMakeUserPresets.json')) as cmake_preset_j:
+                cmake_preset_d = json.load(cmake_preset_j)
+            config_presets = cmake_preset_d["configurePresets"]
+            self.assertEqual(len(config_presets), 1)
+            cmake_exe = config_presets[0]["cmakeExecutable"]
+            preset_name = config_presets[0]["name"]
+
+            # Verify the wrapper for cmake native is available
+            self.assertExists(cmake_exe)
+
+            # Verify the cmake preset generated by devtool ide is available
+            result = runCmd('%s --list-presets' % cmake_exe, cwd=tempdir)
+            self.assertIn(preset_name, result.output)
+
+            # Verify cmake re-uses the o files compiled by bitbake
+            result = runCmd('%s --build --preset %s' % (cmake_exe, preset_name), cwd=tempdir)
+            self.assertIn("ninja: no work to do.", result.output)
+
+            # Verify the unit tests work (in Qemu)
+            result = runCmd('%s --build --preset %s --target test' % (cmake_exe, preset_name), cwd=tempdir)
+            self.assertIn("100% tests passed", result.output)
+
+            # Verify re-building and testing works again
+            result = runCmd('%s --build --preset %s --target clean' % (cmake_exe, preset_name), cwd=tempdir)
+            self.assertIn("Cleaning all built files...", result.output)
+            result = runCmd('%s --build --preset %s' % (cmake_exe, preset_name), cwd=tempdir)
+            self.assertIn("Building", result.output)
+            self.assertIn("Linking", result.output)
+            result = runCmd('%s --build --preset %s --target test' % (cmake_exe, preset_name), cwd=tempdir)
+            self.assertIn("Running tests...", result.output)
+            self.assertIn("100% tests passed", result.output)
+
+            self.__devtool_ide_qemu(tempdir, qemu, recipe_name, bitbake_sdk_cmd, example_exe)
+
+    @OETestTag("runqemu")
+    def test_devtool_ide_recipe_meson(self):
+        recipe_name = "meson-example"
+        example_exe = "mesonex"
+        build_file = "meson.build"
+        testimage = "oe-selftest-image"
+
+        tempdir = self.__devtool_ide_recipe(recipe_name, build_file, testimage)
+
+        # Verify deployment to Qemu works
+        with runqemu(testimage) as qemu:
+            bitbake_sdk_cmd = 'devtool ide %s %s -t root@%s -c --ide=code' % (recipe_name, testimage, qemu.ip)
+            runCmd(bitbake_sdk_cmd)
+
+            with open(os.path.join(tempdir, '.vscode', 'settings.json')) as settings_j:
+                settings_d = json.load(settings_j)
+            meson_exe = settings_d["mesonbuild.mesonPath"]
+            meson_build_folder = settings_d["mesonbuild.buildFolder"]
+
+            # Verify the wrapper for meson native is available
+            self.assertExists(meson_exe)
+
+            # Verify meson re-uses the o files compiled by bitbake
+            result = runCmd('%s compile -C  %s' % (meson_exe, meson_build_folder), cwd=tempdir)
+            self.assertIn("ninja: no work to do.", result.output)
+
+            # Verify the unit tests work (in Qemu)
+            runCmd('%s test -C  %s' % (meson_exe, meson_build_folder), cwd=tempdir)
+
+            # Verify re-building and testing works again
+            result = runCmd('%s compile -C  %s --clean' % (meson_exe, meson_build_folder), cwd=tempdir)
+            self.assertIn("Cleaning...", result.output)
+            result = runCmd('%s compile -C  %s' % (meson_exe, meson_build_folder), cwd=tempdir)
+            self.assertIn("Linking target %s" % example_exe, result.output)
+            runCmd('%s test -C  %s' % (meson_exe, meson_build_folder), cwd=tempdir)
+
+            self.__devtool_ide_qemu(tempdir, qemu, recipe_name, bitbake_sdk_cmd, example_exe)
