@@ -37,6 +37,11 @@ do_compile:prepend() {
 # More info: http://benno.id.au/blog/2013/01/15/python-determinism
 do_install:append() {
 	rm ${D}${PYTHON_SITEPACKAGES_DIR}/numpy/typing/tests/data/pass/__pycache__/literal.cpython*
+
+	if grep g\+\+.*O2.*O3.*O2.*O2.*O2.*O3 ${T}/log.do_compile; then
+		bbwarn "Found problematic compiler options in python3-numpy build, exiting."
+		exit 1
+	fi
 }
 
 FILES:${PN}-staticdev += "${PYTHON_SITEPACKAGES_DIR}/numpy/core/lib/*.a ${PYTHON_SITEPACKAGES_DIR}/numpy/random/lib/*.a"
