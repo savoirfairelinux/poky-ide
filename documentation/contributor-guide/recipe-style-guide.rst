@@ -257,6 +257,16 @@ Tips and Guidelines for Writing Recipes
    and ``-nativesdk`` ones, whenever possible. This avoids having to maintain multiple
    recipe files at the same time.
 
+-  Recipes should have tasks which are idempotent, i.e. that executing a given task
+   multiple times shouldn't change the end result. The build environment is built upon
+   this assumption and breaking it can cause obscure build failures.
+
+-  For idempotence when modifying files it is usually best to copy a file 'X' to
+   'X.orig' only if it already doesn't exist before copying 'X.orig' to 'X' and
+   modifying 'X'. This ensures if rerun the task always has the same end result
+   and the original file can be preserved to reuse. It also guards against an
+   interrupted build corrupting the file.
+
 Patch Upstream Status
 =====================
 
