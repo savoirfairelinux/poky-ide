@@ -1013,11 +1013,12 @@ class RecipeModified:
 
     def vscode_tasks(self, args, gdb_cross):
         run_install_deploy = self.gen_install_deploy_script(args)
+        install_task_name = "install && deploy-target %s" % self.bpn
         tasks_dict = {
             "version": "2.0.0",
             "tasks": [
                 {
-                    "label": "install && deploy-target %s" % self.bpn,
+                    "label": install_task_name,
                     "type": "shell",
                     "command": run_install_deploy,
                     "problemMatcher": []
@@ -1030,6 +1031,9 @@ class RecipeModified:
                     "label": pretty_id,
                     "type": "shell",
                     "isBackground": True,
+                    "dependsOn": [
+                        install_task_name
+                    ],
                     "command": start_script,
                     "problemMatcher": [
                         {
