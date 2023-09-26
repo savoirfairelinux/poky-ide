@@ -735,9 +735,7 @@ class RecipeModified:
         ]
 
     def vscode_extensions(self):
-        recommendations = [
-            "EditorConfig.EditorConfig"
-        ]
+        recommendations = []
         self.__vscode_extensions_cmake(recommendations)
         self.__vscode_extensions_meson(recommendations)
         extensions_file = 'extensions.json'
