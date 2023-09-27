@@ -731,7 +731,10 @@ class RecipeModified:
         if self.build_tool != BuildTool.MESON:
             return
         recommendations += [
-            'mesonbuild.mesonbuild'
+            'mesonbuild.mesonbuild',
+            "ms-vscode.cpptools",
+            "ms-vscode.cpptools-extension-pack",
+            "ms-vscode.cpptools-themes"
         ]
 
     def vscode_extensions(self):
