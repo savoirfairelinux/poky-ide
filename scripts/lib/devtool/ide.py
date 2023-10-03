@@ -655,7 +655,7 @@ class RecipeModified:
         """
         if self.build_tool != BuildTool.CMAKE:
             return
-        settings_dict["cmake.configureOnOpen"] = False
+        settings_dict["cmake.configureOnOpen"] = True
         settings_dict["cmake.sourceDirectory"] = self.real_srctree
 
     def __gen_meson_wrapper(self):
