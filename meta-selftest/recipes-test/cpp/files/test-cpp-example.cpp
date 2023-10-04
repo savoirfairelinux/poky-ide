@@ -15,5 +15,6 @@ int main() {
         std::cout << "PASS: " << ret_string << " = " << CppExample::test_string << std::endl;
     } else {
         std::cout << "FAIL: " << ret_string << " != " << CppExample::test_string << std::endl;
+        return 1;
     }
 }
