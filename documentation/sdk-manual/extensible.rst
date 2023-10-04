@@ -677,6 +677,29 @@ For a recipe which inherits cmake it does:
 For a recipe which inherits meson a similar configuration is generated.
 Because there is nothing like a meson-preset a wrapper script for meson is generated.
 
+For remote debugging to work properly, the target must be running the corresponding image.
+You should also make sure that all dependencies for the recipe, as well as gdbserver
+are installed. Moreover, the target should be accessible through SSH. Lastly,
+you must make sure that the debug symbols are available in the sysroot. Here's
+an example bitbake fragment with the necessary configuration:
+
+.. code-block::
+
+   # Remote debugging needs gdbserver on the target device
+   CORE_IMAGE_EXTRA_INSTALL += "gdbserver"
+
+   # SSH is mandatory
+   EXTRA_IMAGE_FEATURES += "ssh-server-openssh"
+   # No password simplifies the usage
+   EXTRA_IMAGE_FEATURES += "debug-tweaks"
+
+   # Build the companion debug file system
+   IMAGE_GEN_DEBUGFS = "1"
+   # But with devtool ide, the dbg tar is not needed
+   IMAGE_FSTYPES_DEBUGFS = ""
+   # Remote debugging works much better if the binaries are in the rootfs as well.
+   IMAGE_CLASSES += "image-combined-dbg"
+
 For some special recipes and use cases a per-recipe-sysroot based SDK is not suitable.
 Therefore devtool ide also supports setting up the shared sysroots environment and generating
 a IDE configurations referring to the shared sysroots. Recipes leading to a shared sysroot
