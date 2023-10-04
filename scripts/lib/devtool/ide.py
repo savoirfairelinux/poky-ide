@@ -162,6 +162,7 @@ class RecipeImage:
 
     def __init__(self, name):
         self.combine_dbg_image = False
+        self.gdbserver_missing = False
         self.debuginfod = False
         self.name = name
         self.package_debug_split_style = None
@@ -189,6 +190,9 @@ class RecipeImage:
 
         self.combine_dbg_image = bb.data.inherits_class(
             'image-combined-dbg', image_d)
+
+        self.gdbserver_missing = 'gdbserver' not in image_d.getVar(
+            'IMAGE_INSTALL')
 
     @property
     def debug_support(self):
@@ -1073,6 +1077,10 @@ class RecipeModified:
                 self.vscode_tasks(args, gdb_cross)
         if args.ide == 'none' and self.build_tool == BuildTool.CMAKE:
             self.none_launch(image, gdb_cross)
+
+        if (image.gdbserver_missing):
+            logger.warning(
+                "gdbserver not installed in image. Remote debugging will not be available")
 
 
 def ide_setup(args, config, basepath, workspace):
