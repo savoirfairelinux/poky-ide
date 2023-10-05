@@ -573,7 +573,7 @@ class DevtoolAddTests(DevtoolBase):
         checkvars['S'] = '${WORKDIR}/MarkupSafe-%s' % testver
         checkvars['SRC_URI'] = url
         self._test_recipe_contents(recipefile, checkvars, [])
-     
+
     def test_devtool_add_fetch_git(self):
         tempdir = tempfile.mkdtemp(prefix='devtoolqa')
         self.track_for_cleanup(tempdir)
@@ -2328,12 +2328,11 @@ class DevtoolIdeTests(DevtoolBase):
 
             # Verify re-building and testing works again
             result = runCmd('%s --build --preset %s --target clean' % (cmake_exe, preset_name), cwd=tempdir)
-            self.assertIn("Cleaning all built files...", result.output)
+            self.assertIn("Cleaning", result.output)
             result = runCmd('%s --build --preset %s' % (cmake_exe, preset_name), cwd=tempdir)
-            self.assertIn("Building", result.output)
-            self.assertIn("Linking", result.output)
+            self.assertIn("Run Build Command", result.output)
             result = runCmd('%s --build --preset %s --target test' % (cmake_exe, preset_name), cwd=tempdir)
-            self.assertIn("Running tests...", result.output)
+            self.assertIn("Test #1:", result.output)
             self.assertIn("100% tests passed", result.output)
 
             self.__devtool_ide_qemu(tempdir, qemu, recipe_name, bitbake_sdk_cmd, example_exe)
