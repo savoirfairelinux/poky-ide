@@ -695,7 +695,6 @@ class RecipeModified:
     def vscode_settings(self):
         files_excludes = {
             "**/.git/**": True,
-            "**/oe-local-files/**": True,
             "**/oe-logs/**": True,
             "**/oe-workdir/**": True,
             "**/source-date-epoch/**": True
