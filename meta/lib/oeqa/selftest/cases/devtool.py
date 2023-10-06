@@ -2262,6 +2262,10 @@ class DevtoolIdeTests(DevtoolBase):
         MAGIC_STRING_NEW = "Magic: 987654321"
         ptest_cmd = "ptest-runner " + recipe_name
 
+        # validate that SSH is working
+        status, _ = qemu.run("uname")
+        self.assertEqual(status, 0, msg="Failed to connect to the SSH server on Qemu")
+
         # Verify the unmodified example prints the magic string
         status, output = qemu.run(example_exe)
         self.assertEqual(status, 0, msg="%s failed: %s" % (example_exe, output))
@@ -2302,7 +2306,7 @@ class DevtoolIdeTests(DevtoolBase):
         tempdir = self.__devtool_ide_recipe(recipe_name, build_file, testimage)
 
         # Verify deployment to Qemu works
-        with runqemu(testimage) as qemu:
+        with runqemu(testimage, runqemuparams="nographic") as qemu:
             bitbake_sdk_cmd = 'devtool ide %s %s -t root@%s -c --ide=code' % (recipe_name, testimage, qemu.ip)
             runCmd(bitbake_sdk_cmd)
 
@@ -2349,7 +2353,7 @@ class DevtoolIdeTests(DevtoolBase):
         tempdir = self.__devtool_ide_recipe(recipe_name, build_file, testimage)
 
         # Verify deployment to Qemu works
-        with runqemu(testimage) as qemu:
+        with runqemu(testimage, runqemuparams="nographic") as qemu:
             bitbake_sdk_cmd = 'devtool ide %s %s -t root@%s -c --ide=code' % (recipe_name, testimage, qemu.ip)
             runCmd(bitbake_sdk_cmd)
 
