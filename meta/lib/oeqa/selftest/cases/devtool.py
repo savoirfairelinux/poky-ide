@@ -2210,9 +2210,11 @@ class DevtoolIdeTests(DevtoolBase):
         self.add_command_to_tearDown('bitbake-layers remove-layer */workspace')
 
         conf_lines = [
+            'IMAGE_FEATURES += "ssh-server-openssh"',
             'IMAGE_CLASSES += "image-combined-dbg"',
             'IMAGE_GEN_DEBUGFS = "1"',
-            'IMAGE_INSTALL += "gdbserver %s-ptest"' % recipe_name
+            'IMAGE_FSTYPES_DEBUGFS = ""',
+            'CORE_IMAGE_EXTRA_INSTALL += "gdbserver %s-ptest"\n' % recipe_name
         ]
         self.write_config("\n".join(conf_lines))
 
@@ -2295,7 +2297,7 @@ class DevtoolIdeTests(DevtoolBase):
         recipe_name = "cmake-example"
         example_exe = "cmake-example"
         build_file = "CMakeLists.txt"
-        testimage = "oe-selftest-image"
+        testimage = "core-image-minimal"
 
         tempdir = self.__devtool_ide_recipe(recipe_name, build_file, testimage)
 
@@ -2342,7 +2344,7 @@ class DevtoolIdeTests(DevtoolBase):
         recipe_name = "meson-example"
         example_exe = "mesonex"
         build_file = "meson.build"
-        testimage = "oe-selftest-image"
+        testimage = "core-image-minimal"
 
         tempdir = self.__devtool_ide_recipe(recipe_name, build_file, testimage)
 
