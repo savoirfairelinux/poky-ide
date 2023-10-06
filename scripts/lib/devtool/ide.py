@@ -629,16 +629,15 @@ class RecipeModified:
         }
 
         logger.info("generating cmake preset for recipe %s" % self.bpn)
-        preset_file = os.path.join(self.real_srctree, 'CMakeUserPresets.json')
-        with open(preset_file, 'w') as outfile:
-            json.dump(preset_dict, outfile, indent=4)
+        RecipeModified.update_json_file(
+            self.real_srctree, 'CMakeUserPresets.json', preset_dict)
 
     @staticmethod
-    def update_json_file(dot_code_dir, json_file, update_dict):
-        json_path = os.path.join(dot_code_dir, json_file)
-        logger.info("Updating vscode %s (%s)" % (json_file, json_path))
-        if not os.path.exists(dot_code_dir):
-            os.makedirs(dot_code_dir)
+    def update_json_file(parent_dir, json_file, update_dict):
+        json_path = os.path.join(parent_dir, json_file)
+        logger.info("Updating %s (%s)" % (json_file, json_path))
+        if not os.path.exists(parent_dir):
+            os.makedirs(parent_dir)
         try:
             with open(json_path) as f:
                 orig_dict = json.load(f)
