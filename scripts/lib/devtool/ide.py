@@ -755,40 +755,6 @@ class RecipeModified:
                 'Cannot find %s. Probably the recipe %s is not built yet.' % (executable, self.bpn))
         return bin_path
 
-    @staticmethod
-    def vscode_intelli_sense_mode(compiler):
-        unknown = False
-        linux = ''
-        if 'linux' in compiler:
-            linux = "linux-"
-
-        cxx = 'unknown-'
-        if 'g++' in compiler:
-            cxx = 'gcc-'
-        elif 'clang' in compiler:
-            cxx = 'clang-'
-        else:
-            unknown = True
-
-        arch = 'unknown'
-        if 'aarch64' in compiler:
-            arch = 'arm64'
-        elif 'arm' in compiler:
-            arch = 'arm'
-        elif 'x86_64' in compiler:
-            arch = 'x64'
-        elif 'i386' in compiler:
-            arch = 'x86'
-        else:
-            unknown = True
-
-        mode = linux + cxx + arch
-        if unknown:
-            logger.warn(
-                "Cannot guess intelliSenseMode for compiler %s (%s)" % (compiler, mode))
-            return '${default}'
-        return mode
-
     def vscode_c_cpp_properties(self):
         properties_dict = {
             "name": "Yocto " + self.package_arch,
