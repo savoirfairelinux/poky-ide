@@ -2393,7 +2393,7 @@ class DevtoolIdeSdkTests(DevtoolBase):
         """Verify the scripts referred by the tasks.json file are fine.
 
         This function does not depend on Qemu. Therefore it verifies the scripts
-        exists and the delete step works as expected. But it does not try to
+        exists and the install step works as expected. But it does not try to
         deploy to Qemu.
         """
         recipe_id, recipe_id_pretty = self._get_recipe_ids(recipe_name)
@@ -2408,11 +2408,10 @@ class DevtoolIdeSdkTests(DevtoolBase):
         i_and_d_script_path = os.path.join(
             self._workspace_scripts_dir(recipe_name), i_and_d_script)
         self.assertExists(i_and_d_script_path)
-        del_script = "delete_package_dirs_" + recipe_id
-        del_script_path = os.path.join(
-            self._workspace_scripts_dir(recipe_name), del_script)
-        self.assertExists(del_script_path)
-        runCmd(del_script_path, cwd=tempdir)
+        i_script = "bb_run_do_install_" + recipe_id
+        install_cmd_path = i_and_d_script_path.replace(i_and_d_script, i_script)
+        self.assertExists(install_cmd_path)
+        runCmd(install_cmd_path, cwd=tempdir)
 
     def _devtool_ide_sdk_qemu(self, tempdir, qemu, recipe_name, example_exe):
         """Verify deployment and execution in Qemu system work for one recipe.
