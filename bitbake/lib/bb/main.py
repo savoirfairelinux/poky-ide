@@ -348,7 +348,7 @@ class BitBakeConfigParameters(cookerdata.ConfigParameters):
         return options, options.targets
 
 
-def bitbake_main(configParams, configuration):
+def bitbake_main(configParams):
 
     # Python multiprocessing requires /dev/shm on Linux
     if sys.platform.startswith('linux') and not os.access('/dev/shm', os.W_OK | os.X_OK):

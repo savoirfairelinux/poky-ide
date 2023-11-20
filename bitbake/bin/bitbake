@@ -22,7 +22,6 @@ try:
 except RuntimeError as exc:
     sys.exit(str(exc))
 
-from bb import cookerdata
 from bb.main import bitbake_main, BitBakeConfigParameters, BBMainException
 
 bb.utils.check_system_locale()
@@ -33,8 +32,7 @@ if __name__ == "__main__":
     if __version__ != bb.__version__:
         sys.exit("Bitbake core version and program version mismatch!")
     try:
-        sys.exit(bitbake_main(BitBakeConfigParameters(sys.argv),
-                              cookerdata.CookerConfiguration()))
+        sys.exit(bitbake_main(BitBakeConfigParameters(sys.argv)))
     except BBMainException as err:
         sys.exit(err)
     except bb.BBHandledException:
