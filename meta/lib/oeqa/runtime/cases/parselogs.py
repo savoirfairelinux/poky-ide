@@ -6,27 +6,19 @@
 
 import collections
 import os
+import pathlib
 import sys
 
 from shutil import rmtree
 from oeqa.runtime.case import OERuntimeTestCase
 from oeqa.core.decorator.depends import OETestDepends
 
-# importlib.resources.open_text in Python <3.10 doesn't search all directories
-# when a package is split across multiple directories. Until we can rely on
-# 3.10+, reimplement the searching logic.
-if sys.version_info < (3, 10):
-    def _open_text(package, resource):
-        import importlib, pathlib
-        module = importlib.import_module(package)
-        for path in module.__path__:
-            candidate = pathlib.Path(path) / resource
-            if candidate.exists():
-                return candidate.open(encoding='utf-8')
-        raise FileNotFoundError
-else:
-    from importlib.resources import open_text as _open_text
-
+def open_syspath_text(resource):
+    for path in sys.path:
+        candidate = pathlib.Path(path) / resource
+        if candidate.exists():
+            return candidate.open(encoding='utf-8')
+    raise FileNotFoundError
 
 class ParseLogsTest(OERuntimeTestCase):
 
@@ -61,11 +53,16 @@ class ParseLogsTest(OERuntimeTestCase):
         for candidate in ["common", cls.td.get("TARGET_ARCH")] + cls.td.get("MACHINEOVERRIDES").split(":"):
             try:
                 name = f"parselogs-ignores-{candidate}.txt"
-                for line in _open_text("oeqa.runtime.cases", name):
+                print_once = True
+                for line in open_syspath_text(name):
+                    if print_once:
+                        bb.debug(1, "parselogs: ignore file %s found" % (name))
+                        print_once = False
                     line = line.strip()
                     if line and not line.startswith("#"):
                         cls.ignore_errors.append(line.casefold())
             except FileNotFoundError:
+                bb.debug(1, "parselogs: ignore file %s not found" % (name))
                 pass
 
     # Go through the log locations provided and if it's a folder
