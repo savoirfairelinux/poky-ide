@@ -1810,6 +1810,17 @@ def is_local_uid(uid=''):
                 return True
     return False
 
+def var_in_numeric_range(d, var, first=1, last=0, truevalue="", falsevalue=""):
+    """
+    Return a value depending on whether a bitbake variable is in a numeric
+    range.  Conventionally, 0 as the end of the range matches all values.
+    """
+    try:
+        v = int(d.getVar(var))
+    except:
+        return falsevalue
+    return truevalue if v >= first and (v <= last or last == 0) else falsevalue
+
 def mkstemp(suffix=None, prefix=None, dir=None, text=False):
     """
     Generates a unique filename, independent of time.
