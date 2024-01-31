@@ -57,6 +57,7 @@ if [ -n "$TEMPLATECONF" ]; then
     fi
     OECORELAYERCONF="$TEMPLATECONF/bblayers.conf.sample"
     OECORELOCALCONF="$TEMPLATECONF/local.conf.sample"
+    OECOREDESCRCONF="$TEMPLATECONF/conf-description.txt"
     OECORENOTESCONF="$TEMPLATECONF/conf-notes.txt"
 fi
 
@@ -98,6 +99,13 @@ EOM
     SHOWYPDOC=yes
 fi
 
+if [ -z "$OECOREDESCRCONF" ]; then
+    OECOREDESCRCONF="$OEROOT/meta/conf/templates/default/conf-description.txt"
+fi
+if [ ! -r "$BUILDDIR/conf/conf-description.txt" ]; then
+    [ ! -r "$OECOREDESCRCONF" ] || cp "$OECOREDESCRCONF" "$BUILDDIR/conf/conf-description.txt"
+fi
+
 if [ -z "$OECORENOTESCONF" ]; then
     OECORENOTESCONF="$OEROOT/meta/conf/templates/default/conf-notes.txt"
 fi
@@ -108,6 +116,7 @@ fi
 # Prevent disturbing a new GIT clone in same console
 unset OECORELOCALCONF
 unset OECORELAYERCONF
+unset OECOREDESCRCONF
 unset OECORENOTESCONF
 
 # Ending the first-time run message. Show the YP Documentation banner.
@@ -124,6 +133,7 @@ EOM
 #    unset SHOWYPDOC
 fi
 
+[ ! -r "$BUILDDIR/conf/conf-description.txt" ] || cat "$BUILDDIR/conf/conf-description.txt"
 [ ! -r "$BUILDDIR/conf/conf-notes.txt" ] || cat "$BUILDDIR/conf/conf-notes.txt"
 
 if [ ! -f "$BUILDDIR/conf/templateconf.cfg" ]; then
