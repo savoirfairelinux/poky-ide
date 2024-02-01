@@ -66,8 +66,8 @@ do_write_config() {
     # This needs to be Py to split the args into single-element lists
     cat >${WORKDIR}/meson.cross <<EOF
 [binaries]
-c = ${@meson_array('CC', d)}
-cpp = ${@meson_array('CXX', d)}
+c = ${@meson_array('CC', d, True)}
+cpp = ${@meson_array('CXX', d, True)}
 cython = 'cython3'
 ar = ${@meson_array('AR', d)}
 nm = ${@meson_array('NM', d)}

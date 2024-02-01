@@ -6,8 +6,13 @@
 
 inherit siteinfo
 
-def meson_array(var, d):
+def meson_array(var, d, abspath=False):
+    import shutil
     items = d.getVar(var).split()
+    # The generated compile_commands.json file is used by external IDEs which do not
+    # know the $PATH set-up by bitbake. They need the absolute compiler paths.
+    if abspath and items[0] is not None:
+        items[0] = shutil.which(items[0])
     return repr(items[0] if len(items) == 1 else items)
 
 # Map our ARCH values to what Meson expects:
