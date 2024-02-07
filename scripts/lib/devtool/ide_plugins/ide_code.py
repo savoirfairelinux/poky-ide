@@ -157,31 +157,35 @@ class IdeVSCode(IdeBase):
         IdeBase.update_json_file(
             self.dot_code_dir(modified_recipe), settings_file, settings_dict)
 
+    def __vscode_extensions_generic(self, modified_recipe, recommendations):
+        if not modified_recipe.build_tool.is_c_ccp():
+            return
+        recommendations += [
+            "ms-vscode.cpptools",
+            "ms-vscode.cpptools-extension-pack",
+            "ms-vscode.cpptools-themes"
+        ]
+
     def __vscode_extensions_cmake(self, modified_recipe, recommendations):
         if modified_recipe.build_tool is not BuildTool.CMAKE:
             return
         recommendations += [
             "twxs.cmake",
-            "ms-vscode.cmake-tools",
-            "ms-vscode.cpptools",
-            "ms-vscode.cpptools-extension-pack",
-            "ms-vscode.cpptools-themes"
+            "ms-vscode.cmake-tools"
         ]
 
     def __vscode_extensions_meson(self, modified_recipe, recommendations):
         if modified_recipe.build_tool is not BuildTool.MESON:
             return
         recommendations += [
-            'mesonbuild.mesonbuild',
-            "ms-vscode.cpptools",
-            "ms-vscode.cpptools-extension-pack",
-            "ms-vscode.cpptools-themes"
+            'mesonbuild.mesonbuild'
         ]
 
     def vscode_extensions(self, modified_recipe):
         recommendations = []
         self.__vscode_extensions_cmake(modified_recipe, recommendations)
         self.__vscode_extensions_meson(modified_recipe, recommendations)
+        self.__vscode_extensions_generic(modified_recipe, recommendations)
         extensions_file = 'extensions.json'
         IdeBase.update_json_file(
             self.dot_code_dir(modified_recipe), extensions_file, {"recommendations": recommendations})
@@ -194,8 +198,11 @@ class IdeVSCode(IdeBase):
             properties_dict["configurationProvider"] = "ms-vscode.cmake-tools"
         elif modified_recipe.build_tool is BuildTool.MESON:
             properties_dict["configurationProvider"] = "mesonbuild.mesonbuild"
-        else:  # no C/C++ build
-            return
+        elif modified_recipe.build_tool.is_c_ccp():  
+            # Provide a generic linting configuration
+            # We provide a C++ configuration with the proper sysroot
+            properties_dict["compilerPath"] = os.path.join(modified_recipe.staging_bindir_toolchain, modified_recipe.cxx.split()[0])
+            properties_dict["compilerArgs"] = modified_recipe.cxx.split()[1:]
 
         properties_dicts = {
             "configurations": [

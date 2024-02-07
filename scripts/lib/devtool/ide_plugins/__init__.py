@@ -21,12 +21,15 @@ class BuildTool(Enum):
     UNDEFINED = auto()
     CMAKE = auto()
     MESON = auto()
+    AUTOTOOLS = auto()
 
     @property
     def is_c_ccp(self):
         if self is BuildTool.CMAKE:
             return True
         if self is BuildTool.MESON:
+            return True
+        if self is BuildTool.AUTOTOOLS:
             return True
         return False
 
