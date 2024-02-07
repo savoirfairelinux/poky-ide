@@ -10,6 +10,7 @@ import logging
 import sys
 import os
 import re
+import pathlib
 
 import bb.utils
 
@@ -515,6 +516,19 @@ NOTE: .bbappend files can impact the dependencies.
 
             logger.plain("%s %s %s" % (f, keyword, best_realfn))
 
+    def do_show_machines(self, args):
+        """List the machines available in the currently configured layers."""
+
+        for layer_dir in self.bblayers:
+            layer_name = self.get_layer_name(layer_dir)
+
+            for p in sorted(pathlib.Path(layer_dir).glob("conf/machine/*.conf")):
+                if args.bare:
+                    logger.plain("%s" % (p.stem))
+                else:
+                    logger.plain("%s (%s)" % (p.stem, layer_name))
+
+
     def register_commands(self, sp):
         self.add_command(sp, 'show-layers', self.do_show_layers, parserecipes=False)
 
@@ -540,3 +554,6 @@ NOTE: .bbappend files can impact the dependencies.
         parser_show_cross_depends = self.add_command(sp, 'show-cross-depends', self.do_show_cross_depends)
         parser_show_cross_depends.add_argument('-f', '--filenames', help='show full file path', action='store_true')
         parser_show_cross_depends.add_argument('-i', '--ignore', help='ignore dependencies on items in the specified layer(s) (split multiple layer names with commas, no spaces)', metavar='LAYERNAME')
+
+        parser_show_machines = self.add_command(sp, "show-machines", self.do_show_machines)
+        parser_show_machines.add_argument('-b', '--bare', help='output just the machine names, not the source layer', action='store_true')
