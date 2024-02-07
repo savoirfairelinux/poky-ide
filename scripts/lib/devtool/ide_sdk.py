@@ -301,6 +301,7 @@ class RecipeModified:
         self.staging_incdir = None
         self.strip_cmd = None
         self.target_arch = None
+        self.topdir = None
         self.workdir = None
         self.recipe_id = None
         # recipe variables from d.getVarFlags
@@ -371,6 +372,7 @@ class RecipeModified:
         self.strip_cmd = recipe_d.getVar('STRIP')
         self.target_arch = recipe_d.getVar('TARGET_ARCH')
         self.workdir = os.path.realpath(recipe_d.getVar('WORKDIR'))
+        self.topdir = os.path.realpath(recipe_d.getVar('TOPDIR'))
 
         self.f_do_install_cleandirs = recipe_d.getVarFlag(
             'do_install', 'cleandirs').split()
