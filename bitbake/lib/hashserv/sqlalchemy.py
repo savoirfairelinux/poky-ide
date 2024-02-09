@@ -32,6 +32,7 @@ from sqlalchemy import (
 import sqlalchemy.engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
 
 Base = declarative_base()
 
@@ -287,16 +288,28 @@ class Database(object):
             return result.rowcount
 
     async def insert_unihash(self, method, taskhash, unihash):
-        statement = insert(UnihashesV2).values(
-            method=method,
-            taskhash=taskhash,
-            unihash=unihash,
-        )
+        # Postgres specific ignore on insert duplicate
+        if self.engine.name == 'postgresql':
+            statement = postgres_insert(UnihashesV2).values(
+                method=method,
+                taskhash=taskhash,
+                unihash=unihash,
+            )
+            statement = statement.on_conflict_do_nothing(
+                index_elements=("method", "taskhash")
+            )
+        else:
+            statement = insert(UnihashesV2).values(
+                method=method,
+                taskhash=taskhash,
+                unihash=unihash,
+            )
+
         self.logger.debug("%s", statement)
         try:
             async with self.db.begin():
-                await self.db.execute(statement)
-            return True
+                result = await self.db.execute(statement)
+                return result.rowcount != 0
         except IntegrityError:
             self.logger.debug(
                 "%s, %s, %s already in unihash database", method, taskhash, unihash
@@ -311,12 +324,20 @@ class Database(object):
         if "created" in data and not isinstance(data["created"], datetime):
             data["created"] = datetime.fromisoformat(data["created"])
 
-        statement = insert(OuthashesV2).values(**data)
+        # Postgres specific ignore on insert duplicate
+        if self.engine.name == 'postgresql':
+            statement = postgres_insert(OuthashesV2).values(**data)
+            statement = statement.on_conflict_do_nothing(
+                index_elements=("method", "taskhash", "outhash")
+            )
+        else:
+            statement = insert(OuthashesV2).values(**data)
+
         self.logger.debug("%s", statement)
         try:
             async with self.db.begin():
-                await self.db.execute(statement)
-            return True
+                result = await self.db.execute(statement)
+                return result.rowcount != 0
         except IntegrityError:
             self.logger.debug(
                 "%s, %s already in outhash database", data["method"], data["outhash"]
