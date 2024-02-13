@@ -106,6 +106,41 @@ class Rootfs(object, metaclass=ABCMeta):
     def _cleanup(self):
         pass
 
+    def _setup_pkg_db_rootfs(self, package_paths):
+        gen_pkg_db_fs = self.d.getVar('IMAGE_GEN_PKGDBFS') or '0'
+        if gen_pkg_db_fs != '1':
+           return
+
+        bb.note("  Renaming the original rootfs...")
+        try:
+            shutil.rmtree(self.image_rootfs + '-orig')
+        except:
+            pass
+        bb.utils.rename(self.image_rootfs, self.image_rootfs + '-orig')
+
+        bb.note("  Creating pkg-db rootfs...")
+        bb.utils.mkdirhier(self.image_rootfs)
+
+        bb.note("  Copying back package database...")
+        for path in package_paths:
+            bb.utils.mkdirhier(self.image_rootfs + os.path.dirname(path))
+            if os.path.isdir(self.image_rootfs + '-orig' + path):
+                shutil.copytree(self.image_rootfs + '-orig' + path, self.image_rootfs + path, symlinks=True)
+            elif os.path.isfile(self.image_rootfs + '-orig' + path):
+                shutil.copyfile(self.image_rootfs + '-orig' + path, self.image_rootfs + path)
+
+        ####
+
+        bb.note("  Rename pkg-db rootfs...")
+        try:
+            shutil.rmtree(self.image_rootfs + '-pkgdb')
+        except:
+            pass
+        bb.utils.rename(self.image_rootfs, self.image_rootfs + '-pkgdb')
+
+        bb.note("  Restoring original rootfs...")
+        bb.utils.rename(self.image_rootfs + '-orig', self.image_rootfs)
+
     def _setup_dbg_rootfs(self, package_paths):
         gen_debugfs = self.d.getVar('IMAGE_GEN_DEBUGFS') or '0'
         if gen_debugfs != '1':

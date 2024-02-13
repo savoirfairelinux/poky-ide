@@ -42,6 +42,9 @@ IMAGE_FEATURES ?= ""
 IMAGE_FEATURES[type] = "list"
 IMAGE_FEATURES[validitems] += "debug-tweaks read-only-rootfs read-only-rootfs-delayed-postinsts stateless-rootfs empty-root-password allow-empty-password allow-root-login serial-autologin-root post-install-logging overlayfs-etc"
 
+# Generate snapshot of the package database?
+IMAGE_GEN_PKGDBFS ?= "0"
+
 # Generate companion debugfs?
 IMAGE_GEN_DEBUGFS ?= "0"
 
@@ -131,7 +134,8 @@ def rootfs_variables(d):
                  'IMAGE_ROOTFS_MAXSIZE','IMAGE_NAME','IMAGE_LINK_NAME','IMAGE_MANIFEST','DEPLOY_DIR_IMAGE','IMAGE_FSTYPES','IMAGE_INSTALL_COMPLEMENTARY','IMAGE_LINGUAS', 'IMAGE_LINGUAS_COMPLEMENTARY', 'IMAGE_LOCALES_ARCHIVE',
                  'MULTILIBRE_ALLOW_REP','MULTILIB_TEMP_ROOTFS','MULTILIB_VARIANTS','MULTILIBS','ALL_MULTILIB_PACKAGE_ARCHS','MULTILIB_GLOBAL_VARIANTS','BAD_RECOMMENDATIONS','NO_RECOMMENDATIONS',
                  'PACKAGE_ARCHS','PACKAGE_CLASSES','TARGET_VENDOR','TARGET_ARCH','TARGET_OS','OVERRIDES','BBEXTENDVARIANT','FEED_DEPLOYDIR_BASE_URI','INTERCEPT_DIR','USE_DEVFS',
-                 'CONVERSIONTYPES', 'IMAGE_GEN_DEBUGFS', 'ROOTFS_RO_UNNEEDED', 'IMGDEPLOYDIR', 'PACKAGE_EXCLUDE_COMPLEMENTARY', 'REPRODUCIBLE_TIMESTAMP_ROOTFS', 'IMAGE_INSTALL_DEBUGFS']
+                 'CONVERSIONTYPES', 'IMAGE_GEN_PKGDBFS', 'IMAGE_GEN_DEBUGFS', 'ROOTFS_RO_UNNEEDED', 'IMGDEPLOYDIR', 'PACKAGE_EXCLUDE_COMPLEMENTARY', 'REPRODUCIBLE_TIMESTAMP_ROOTFS',
+                 'IMAGE_INSTALL_DEBUGFS']
     variables.extend(rootfs_command_variables(d))
     variables.extend(variable_depends(d))
     return " ".join(variables)
@@ -337,6 +341,19 @@ python do_image_qa_setscene () {
 }
 addtask do_image_qa_setscene
 
+def setup_pkgdbfs_variables(d):
+    d.appendVar('IMAGE_ROOTFS', '-pkgdb')
+    if d.getVar('IMAGE_LINK_NAME'):
+        d.appendVar('IMAGE_LINK_NAME', '-pkgdb')
+    d.appendVar('IMAGE_NAME','-pkgdb')
+    pkgdbfs_image_fstypes = d.getVar('IMAGE_FSTYPES_PKGDBFS')
+    if pkgdbfs_image_fstypes:
+        d.setVar('IMAGE_FSTYPES', pkgdbfs_image_fstypes)
+
+python setup_pkgdbfs () {
+    setup_pkgdbfs_variables(d)
+}
+
 def setup_debugfs_variables(d):
     d.appendVar('IMAGE_ROOTFS', '-dbg')
     if d.getVar('IMAGE_LINK_NAME'):
@@ -381,6 +398,11 @@ python () {
     alltypes = d.getVar('IMAGE_FSTYPES').split()
     typedeps = {}
 
+    if d.getVar('IMAGE_GEN_PKGDBFS') == "1":
+        pkgdbfs_fstypes = d.getVar('IMAGE_FSTYPES_PKGDBFS').split()
+        for t in pkgdbfs_fstypes:
+            alltypes.append("pkgdbfs_" + t)
+
     if d.getVar('IMAGE_GEN_DEBUGFS') == "1":
         debugfs_fstypes = d.getVar('IMAGE_FSTYPES_DEBUGFS').split()
         for t in debugfs_fstypes:
@@ -393,6 +415,10 @@ python () {
             basetypes[baset]= []
         if t not in basetypes[baset]:
             basetypes[baset].append(t)
+        pkgdb = ""
+        if t.startswith("pkgdbfs_"):
+            t = t[8:]
+            pkgdb = "pkgdbfs_"
         debug = ""
         if t.startswith("debugfs_"):
             t = t[8:]
@@ -401,6 +427,13 @@ python () {
         vardeps.add('IMAGE_TYPEDEP:' + t)
         if baset not in typedeps:
             typedeps[baset] = set()
+        deps = [pkgdb + dep for dep in deps]
+        for dep in deps:
+            if dep not in alltypes:
+                alltypes.append(dep)
+            _add_type(dep)
+            basedep = _image_base_type(dep)
+            typedeps[baset].add(basedep)
         deps = [debug + dep for dep in deps]
         for dep in deps:
             if dep not in alltypes:
@@ -419,6 +452,7 @@ python () {
 
     maskedtypes = (d.getVar('IMAGE_TYPES_MASKED') or "").split()
     maskedtypes = [dbg + t for t in maskedtypes for dbg in ("", "debugfs_")]
+    maskedtypes = [pkgdb + t for t in maskedtypes for pkgdb in ("", "pkgdbfs_")]
 
     for t in basetypes:
         vardeps = set()
@@ -430,6 +464,11 @@ python () {
             continue
 
         localdata = bb.data.createCopy(d)
+        pkgdb = ""
+        if t.startswith("pkgdbfs_"):
+            setup_pkgdbfs_variables(localdata)
+            pkgdb = "setup_pkgdbfs "
+            realt = t[8:]
         debug = ""
         if t.startswith("debugfs_"):
             setup_debugfs_variables(localdata)
@@ -468,6 +507,8 @@ python () {
             for ctype in sorted(ctypes):
                 if bt.endswith("." + ctype):
                     type = bt[0:-len(ctype) - 1]
+                    if type.startswith("pkgdbfs_"):
+                        type = type[8:]
                     if type.startswith("debugfs_"):
                         type = type[8:]
                     # Create input image first.
@@ -508,7 +549,7 @@ python () {
         d.setVarFlag(task, 'func', '1')
         d.setVarFlag(task, 'fakeroot', '1')
 
-        d.appendVarFlag(task, 'prefuncs', ' ' + debug + ' set_image_size')
+        d.appendVarFlag(task, 'prefuncs', ' ' + debug + pkgdb + ' set_image_size')
         d.prependVarFlag(task, 'postfuncs', 'create_symlinks ')
         d.appendVarFlag(task, 'subimages', ' ' + ' '.join(subimages))
         d.appendVarFlag(task, 'vardeps', ' ' + ' '.join(vardeps))

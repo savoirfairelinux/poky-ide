@@ -25,6 +25,7 @@ def imagetypes_getdepends(d):
 
     fstypes = set((d.getVar('IMAGE_FSTYPES') or "").split())
     fstypes |= set((d.getVar('IMAGE_FSTYPES_DEBUGFS') or "").split())
+    fstypes |= set((d.getVar('IMAGE_FSTYPES_PKGDBFS') or "").split())
 
     deprecated = set()
     deps = set()

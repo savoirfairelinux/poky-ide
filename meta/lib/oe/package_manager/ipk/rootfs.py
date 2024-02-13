@@ -319,6 +319,7 @@ class PkgRootfs(DpkgOpkgRootfs):
 
         opkg_lib_dir = self.d.getVar('OPKGLIBDIR')
         opkg_dir = os.path.join(opkg_lib_dir, 'opkg')
+        self._setup_pkg_db_rootfs([opkg_dir])
         self._setup_dbg_rootfs([opkg_dir])
 
         execute_pre_post_process(self.d, opkg_post_process_cmds)
