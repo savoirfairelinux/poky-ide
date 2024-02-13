@@ -106,6 +106,35 @@ class Rootfs(object, metaclass=ABCMeta):
     def _cleanup(self):
         pass
 
+    def _unpack_pkg_db_rootfs(self, package_paths):
+        import tarfile
+        gen_pkg_db_fs = self.d.getVar('IMAGE_BASE_PKGDB') or ''
+        if gen_pkg_db_fs == '':
+           return
+
+        fname = self.d.getVar('DEPLOY_DIR_IMAGE') + '/' + self.d.getVar('IMAGE_BASE_PKGDB') + '-pkgdb.tar.gz'
+        if not fname:
+            bb.warn("PKGDB does not exit:", fname)
+            return
+
+        bb.note("  unpacking package database...")
+        bb.utils.mkdirhier(self.image_rootfs + '-pkgdb')
+        if fname.endswith("tar.gz"):
+            tar = tarfile.open(fname, "r:gz")
+            tar.extractall(path=self.image_rootfs + '-pkgdb')
+            tar.close()
+
+        bb.note("  Copying back package database...")
+        for path in package_paths:
+            try:
+                bb.utils.mkdirhier(self.image_rootfs + os.path.dirname(path))
+            except:
+                pass
+            if os.path.isdir(self.image_rootfs + '-pkgdb' + path):
+                shutil.copytree(self.image_rootfs + '-pkgdb' + path, self.image_rootfs + path, symlinks=True, dirs_exist_ok=True)
+            elif os.path.isfile(self.image_rootfs + '-pkgdb' + path):
+                shutil.copyfile(self.image_rootfs + '-pkgdb' + path, self.image_rootfs + path)
+
     def _setup_pkg_db_rootfs(self, package_paths):
         gen_pkg_db_fs = self.d.getVar('IMAGE_GEN_PKGDBFS') or '0'
         if gen_pkg_db_fs != '1':

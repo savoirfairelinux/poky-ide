@@ -276,11 +276,15 @@ class PkgRootfs(DpkgOpkgRootfs):
         pkgs_to_install = self.manifest.parse_initial_manifest()
         opkg_pre_process_cmds = self.d.getVar('OPKG_PREPROCESS_COMMANDS')
         opkg_post_process_cmds = self.d.getVar('OPKG_POSTPROCESS_COMMANDS')
+        opkg_lib_dir = self.d.getVar('OPKGLIBDIR')
+        opkg_dir = os.path.join(opkg_lib_dir, 'opkg')
 
         # update PM index files
         self.pm.write_index()
 
         execute_pre_post_process(self.d, opkg_pre_process_cmds)
+
+        self._unpack_pkg_db_rootfs([opkg_dir])
 
         if self.progress_reporter:
             self.progress_reporter.next_stage()
@@ -317,8 +321,6 @@ class PkgRootfs(DpkgOpkgRootfs):
         if self.progress_reporter:
             self.progress_reporter.next_stage()
 
-        opkg_lib_dir = self.d.getVar('OPKGLIBDIR')
-        opkg_dir = os.path.join(opkg_lib_dir, 'opkg')
         self._setup_pkg_db_rootfs([opkg_dir])
         self._setup_dbg_rootfs([opkg_dir])
 

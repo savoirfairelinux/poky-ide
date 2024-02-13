@@ -67,11 +67,14 @@ class PkgRootfs(Rootfs):
         pkgs_to_install = self.manifest.parse_initial_manifest()
         rpm_pre_process_cmds = self.d.getVar('RPM_PREPROCESS_COMMANDS')
         rpm_post_process_cmds = self.d.getVar('RPM_POSTPROCESS_COMMANDS')
+        package_paths = ['/etc/rpm', '/etc/rpmrc', '/etc/dnf', '/var/lib/rpm', '/var/cache/dnf', '/var/lib/dnf']
 
         # update PM index files
         self.pm.write_index()
 
         execute_pre_post_process(self.d, rpm_pre_process_cmds)
+
+        self._unpack_pkg_db_rootfs(package_paths)
 
         if self.progress_reporter:
             self.progress_reporter.next_stage()
@@ -110,8 +113,8 @@ class PkgRootfs(Rootfs):
         if self.progress_reporter:
             self.progress_reporter.next_stage()
 
-        self._setup_pkg_db_rootfs(['/etc/rpm', '/etc/rpmrc', '/etc/dnf', '/var/lib/rpm', '/var/cache/dnf', '/var/lib/dnf'])
-        self._setup_dbg_rootfs(['/etc/rpm', '/etc/rpmrc', '/etc/dnf', '/var/lib/rpm', '/var/cache/dnf', '/var/lib/dnf'])
+        self._setup_pkg_db_rootfs(package_paths)
+        self._setup_dbg_rootfs(package_paths)
 
         execute_pre_post_process(self.d, rpm_post_process_cmds)
 

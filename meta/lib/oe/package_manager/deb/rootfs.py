@@ -152,6 +152,8 @@ class PkgRootfs(DpkgOpkgRootfs):
 
         execute_pre_post_process(self.d, deb_pre_process_cmds)
 
+        self._unpack_pkg_db_rootfs(['/var/lib/dpkg'])
+
         if self.progress_reporter:
             self.progress_reporter.next_stage()
             # Don't support incremental, so skip that
