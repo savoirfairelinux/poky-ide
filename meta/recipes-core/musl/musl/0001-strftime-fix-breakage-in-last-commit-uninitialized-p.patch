@@ -1,0 +1,41 @@
+From 46562816d15ecd66fab7ee916a3684de29b9789a Mon Sep 17 00:00:00 2001
+From: Khem Raj <raj.khem@gmail.com>
+Date: Mon, 12 Feb 2024 14:40:53 -0800
+Subject: [PATCH] strftime: fix breakage in last commit (uninitialized pointer
+ access)
+
+commit f47a5d400b8ffa26cfc5b345dbff52fec94ac7f3 overlooked that
+strtoul was responsible for setting p to a const-laundered copy of the
+format string pointer f, even in the case where there was no number to
+parse. by making the call conditional on isdigit, that copy was lost.
+
+the logic here is a mess and should be cleaned up, but for now, this
+seems to be the least invasive change that undoes the breakage.
+
+Upstream-Status: Submitted [Rich Felker (musl maintainer) is the proposer of this patch]
+Signed-off-by: Khem Raj <raj.khem@gmail.com>
+---
+ src/time/strftime.c | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
+
+diff --git a/src/time/strftime.c b/src/time/strftime.c
+index ef590903..c40246db 100644
+--- a/src/time/strftime.c
++++ b/src/time/strftime.c
+@@ -234,7 +234,12 @@ size_t __strftime_l(char *restrict s, size_t n, const char *restrict f, const st
+ 		pad = 0;
+ 		if (*f == '-' || *f == '_' || *f == '0') pad = *f++;
+ 		if ((plus = (*f == '+'))) f++;
+-		width = isdigit(*f) ? strtoul(f, &p, 10) : 0;
++		if (isdigit(*f)) {
++			width = strtoul(f, &p, 10);
++		} else {
++			width = 0;
++			p = (void *)f;
++		}
+ 		if (*p == 'C' || *p == 'F' || *p == 'G' || *p == 'Y') {
+ 			if (!width && p!=f) width = 1;
+ 		} else {
+-- 
+2.43.1
+
